@@ -3,72 +3,81 @@
 var path = "input.txt";
 var grid = File.ReadAllLines(path);
 
-Dictionary<string, Func<string, string, string>> operators_map =new()
+Dictionary<string, Func<string, string, string>> operators_map = new()
 {
-    { "+",  (a, b) => (long.Parse(a) + long.Parse(b)).ToString() },
-    { "*",  (a, b) => (long.Parse(a) * lo   ng.Parse(b)).ToString() },
+    { "+", (a, b) => (long.Parse(a) + long.Parse(b)).ToString() },
+    { "*", (a, b) => (long.Parse(a) * long.Parse(b)).ToString() },
     { "||", (a, b) => a + b }
 };
 
-void Solve(List<string> operators)
+long SolvePuzzle(List<string> operators)
 {
-    long ans = 0;
+    long totalSum = 0;
+    
     foreach (var line in grid)
     {
-        long result = long.Parse(line.Split(':')[0]);
-        string[] nums = line.Split(':')[1].Trim().Split();
+        var parts = line.Split(':');
+        long targetResult = long.Parse(parts[0]);
+        string[] numbers = parts[1].Trim().Split();
         
-        List<List<string>> expressions = [[nums[0]]];
-        for (int i = 1; i < nums.Length; i++)
+        if (HasValidExpression(numbers, operators, targetResult))
         {
-            var temp = new List<List<string>>();
-            foreach (var exp in expressions)
-            {
-                foreach (var op in operators)
-                {
-                    temp.Add([.. exp, op, nums[i]]);
-                }
-            }
-
-            expressions = temp;
-        }
-
-        if (expressions.Any(x => CalculateExpression(x) == result))
-        {
-            ans += result;
+            totalSum += targetResult;
         }
     }
-
-    Console.WriteLine(ans);
-
-    long CalculateExpression(List<string> exp)
-    {
-        var stack = new Stack<string>();
-        foreach (var item in exp)
-        {
-            if (stack.Count > 0 && operators_map.ContainsKey(stack.Peek()))
-            {
-                string a = item;
-                string op = stack.Pop();
-                string b = stack.Pop();
-
-                stack.Push(operators_map[op](a, b));
-            }
-            else
-            {
-                stack.Push(item);
-            }
-        }
-
-        var result = stack.Pop();
-
-        return long.Parse(result);
-    }
+    
+    return totalSum;
 }
 
-void PartOne() => Solve(["+", "*"]);
+bool HasValidExpression(string[] numbers, List<string> operators, long targetResult)
+{
+    List<List<string>> expressions = [[numbers[0]]];
+    
+    for (int i = 1; i < numbers.Length; i++)
+    {
+        expressions = expressions
+            .SelectMany(exp => operators
+                .Select(op => [.. exp, op, numbers[i]]))
+            .ToList();
+    }
 
-void PartTwo() => Solve(["+", "*", "||"]);
+    return expressions.Any(exp => EvaluateExpression(exp) == targetResult);
+}
 
-PartOne();
-PartTwo();  
+long EvaluateExpression(List<string> expression)
+{
+    var stack = new Stack<string>();
+    
+    foreach (var token in expression)
+    {
+        if (stack.Count > 0 && operators_map.ContainsKey(stack.Peek()))
+        {
+            var operand = token;
+            var operation = stack.Pop();
+            var previousOperand = stack.Pop();
+            
+            stack.Push(operators_map[operation](operand, previousOperand));
+        }
+        else
+        {
+            stack.Push(token);
+        }
+    }
+    
+    return long.Parse(stack.Pop());
+}
+
+void SolvePartOne()
+{
+    var result = SolvePuzzle(["+", "*"]);
+    Console.WriteLine(result);
+}
+
+void SolvePartTwo()
+{
+    var result = SolvePuzzle(["+", "*", "||"]);
+    Console.WriteLine(result);
+}
+
+SolvePartOne();
+SolvePartTwo();
